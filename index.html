@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mitosis</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0c'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23e8a33d' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='3.2' fill='%23e8a33d'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -12,18 +12,16 @@
     <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
     <style>
       :root {
-        --bg: #05060a;
-        --panel: rgba(17, 19, 30, 0.72);
-        --panel-solid: #12141f;
-        --border: rgba(255, 255, 255, 0.09);
-        --text: #f3f4f8;
-        --text-dim: #9296ab;
-        --accent-a: #7c5cff;
-        --accent-b: #22d3ee;
-        --accent-grad: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-        --good: #34d399;
-        --bad: #f87171;
-        --warn: #fbbf24;
+        --bg: #0a0a0c;
+        --panel: rgba(22, 22, 25, 0.88);
+        --panel-solid: #17171b;
+        --border: rgba(255, 255, 255, 0.1);
+        --text: #f2f1ed;
+        --text-dim: #8c8a85;
+        --accent: #e8a33d;
+        --accent-dim: rgba(232, 163, 61, 0.16);
+        --good: #5ea877;
+        --bad: #c15c4f;
       }
 
       html, body {
@@ -47,11 +45,11 @@
         transform: translateX(-50%);
         width: min(600px, 94vw);
         background: var(--panel);
-        backdrop-filter: blur(20px) saturate(160%);
-        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
         border: 1px solid var(--border);
-        border-radius: 18px;
-        box-shadow: 0 20px 60px -12px rgba(124, 92, 255, 0.25), 0 8px 30px rgba(0, 0, 0, 0.5);
+        border-radius: 14px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
         padding: 14px 18px 16px;
         color: var(--text);
         z-index: 999;
@@ -98,9 +96,9 @@
       }
 
       #entityInfo.flash {
-        background: rgba(251, 191, 36, 0.14);
-        border-left-color: var(--warn);
-        color: #ffe9b3;
+        background: var(--accent-dim);
+        border-left-color: var(--accent);
+        color: #f5dbab;
       }
 
       #exploreProgress {
@@ -121,7 +119,7 @@
       #exploreBarFill {
         height: 100%;
         width: 0%;
-        background: var(--accent-grad);
+        background: var(--accent);
         transition: width 0.3s ease;
       }
 
@@ -143,19 +141,20 @@
       }
 
       .dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.18);
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
         border: none;
         cursor: pointer;
         padding: 0;
-        transition: width 0.25s ease, background 0.25s ease;
+        transition: width 0.2s ease, border-radius 0.2s ease, background 0.2s ease;
       }
 
       .dot.active {
-        width: 22px;
-        background: var(--accent-grad);
+        width: 18px;
+        border-radius: 4px;
+        background: var(--accent);
       }
 
       #controls {
@@ -169,7 +168,7 @@
         max-width: 150px;
         min-height: 40px;
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: 8px;
         background: rgba(255, 255, 255, 0.05);
         color: var(--text);
         font-size: 0.85rem;
@@ -193,14 +192,14 @@
       }
 
       #controls #nextBtn {
-        background: var(--accent-grad);
+        background: var(--accent);
         border-color: transparent;
-        color: #fff;
+        color: #241703;
         font-weight: 600;
       }
 
       #controls #nextBtn:hover:not(:disabled) {
-        filter: brightness(1.1);
+        background: #f0af4f;
       }
 
       #hint {
@@ -211,11 +210,9 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        background: var(--panel);
-        backdrop-filter: blur(20px) saturate(160%);
-        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        background: var(--panel-solid);
         border: 1px solid var(--border);
-        border-radius: 999px;
+        border-radius: 10px;
         box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
         padding: 8px 10px 8px 16px;
         color: var(--text-dim);
@@ -228,7 +225,7 @@
       #quizBtn {
         flex: none;
         border: 1px solid var(--border);
-        border-radius: 999px;
+        border-radius: 7px;
         background: rgba(255, 255, 255, 0.06);
         color: var(--text);
         font-size: 0.72rem;
@@ -261,10 +258,8 @@
 
       #movePad button {
         border: 1px solid var(--border);
-        border-radius: 10px;
-        background: var(--panel);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
+        border-radius: 8px;
+        background: var(--panel-solid);
         color: var(--text);
         font-size: 1rem;
         cursor: pointer;
@@ -274,7 +269,7 @@
       }
 
       #movePad button:active {
-        background: rgba(124, 92, 255, 0.35);
+        background: var(--accent-dim);
       }
 
       #moveForward { grid-column: 2; grid-row: 1; }
@@ -291,9 +286,7 @@
       .overlay {
         position: fixed;
         inset: 0;
-        background: rgba(2, 3, 8, 0.7);
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        background: rgba(2, 3, 8, 0.75);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -309,8 +302,8 @@
       .overlay-card {
         background: var(--panel-solid);
         border: 1px solid var(--border);
-        border-radius: 18px;
-        box-shadow: 0 30px 80px -20px rgba(124, 92, 255, 0.35), 0 20px 60px rgba(0, 0, 0, 0.6);
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.65);
         max-width: 520px;
         width: 100%;
         max-height: 86vh;
@@ -324,18 +317,15 @@
 
       .overlay-card h1 {
         margin: 0 0 12px;
-        font-size: 1.7rem;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        background: var(--accent-grad);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
+        font-size: 1.6rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text);
       }
 
       .overlay-card h2 {
         margin: 0 0 10px;
-        font-size: 1.3rem;
+        font-size: 1.25rem;
         font-weight: 700;
         letter-spacing: -0.01em;
       }
@@ -348,8 +338,8 @@
       }
 
       .overlay-card .goal {
-        background: rgba(124, 92, 255, 0.12);
-        border-left: 3px solid var(--accent-a);
+        background: var(--accent-dim);
+        border-left: 3px solid var(--accent);
         padding: 10px 14px;
         border-radius: 8px;
         color: var(--text);
@@ -386,7 +376,7 @@
       .overlay-card button.quiz-choice {
         text-align: left;
         border: 1px solid var(--border);
-        border-radius: 10px;
+        border-radius: 8px;
         background: rgba(255, 255, 255, 0.04);
         color: var(--text);
         padding: 11px 14px;
@@ -431,18 +421,18 @@
 
       .overlay-card button {
         border: 1px solid transparent;
-        border-radius: 10px;
-        background: var(--accent-grad);
-        color: #fff;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #241703;
         font-weight: 600;
         font-size: 0.9rem;
         padding: 11px 20px;
         cursor: pointer;
-        transition: filter 0.15s ease, transform 0.15s ease;
+        transition: background 0.15s ease, transform 0.15s ease;
       }
 
       .overlay-card button:hover {
-        filter: brightness(1.1);
+        background: #f0af4f;
       }
 
       .overlay-card button:active {
@@ -487,10 +477,10 @@
       <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="outroTitle">
         <h2 id="outroTitle">Division complete</h2>
         <p>
-          One cell became two, each with a full, identical copy of the DNA &mdash;
-          that's mitosis. Your body runs this process constantly to grow, replace
-          worn-out cells, and heal wounds, and every step of it is powered by the
-          ATP the mitochondria supplied along the way.
+          One cell became two, each with a full, identical copy of the DNA. That's
+          mitosis: your body runs this constantly to grow, replace worn-out cells,
+          and heal wounds, all powered by the ATP the mitochondria supplied along
+          the way.
         </p>
         <ol class="recap" id="recapList"></ol>
         <div class="overlay-actions">
@@ -726,7 +716,7 @@
           name: "Interphase",
           description:
             "This is before anything really happens. The cell is just growing and making a copy of all its DNA. Right now the DNA is loose strands (chromatin) floating around in the nucleus, nothing organized yet.",
-          recap: "Interphase &mdash; the cell grows and copies its DNA.",
+          recap: "Interphase: the cell grows and copies its DNA.",
           dnaHelixOpacity: 0.85,
           chrom: chromLoose(0.05),
           chromOpacity: 0.35,
@@ -742,7 +732,7 @@
           name: "Prophase",
           description:
             "The DNA starts coiling up tight into chromosomes you can actually make out. Each one is two identical copies (sister chromatids) stuck together at the centromere. The nucleus's outer layer starts dissolving and spindle fibers start growing in from both ends of the cell.",
-          recap: "Prophase &mdash; DNA coils into chromosomes, spindle fibers form.",
+          recap: "Prophase: DNA coils into chromosomes, spindle fibers form.",
           dnaHelixOpacity: 0,
           chrom: chromLoose(0.18),
           chromOpacity: 1,
@@ -758,7 +748,7 @@
           name: "Metaphase",
           description:
             "All three chromosomes get pulled to the exact middle of the cell and line up in a row. Kind of a checkpoint, the cell makes sure everything's lined up right before it starts pulling things apart.",
-          recap: "Metaphase &mdash; chromosomes line up in the middle.",
+          recap: "Metaphase: chromosomes line up in the middle.",
           dnaHelixOpacity: 0,
           chrom: SLOTS.map((s) => ({
             a: { x: s, y: 2.15, z: -4 },
@@ -777,7 +767,7 @@
           name: "Anaphase",
           description:
             "The centromeres split and the two copies of each chromosome get yanked to opposite ends of the cell. Once they're separated they're just called chromosomes again, not sister chromatids.",
-          recap: "Anaphase &mdash; sister chromatids get pulled to opposite ends.",
+          recap: "Anaphase: sister chromatids get pulled to opposite ends.",
           dnaHelixOpacity: 0,
           chrom: SLOTS.map((s) => ({
             a: { x: s * 0.6, y: 3.2, z: -4 },
@@ -796,7 +786,7 @@
           name: "Telophase & Cytokinesis",
           description:
             "Two new nuclei start forming around each cluster of chromosomes, and the DNA loosens back up. Then the whole cell pinches in down the middle until there are two separate cells.",
-          recap: "Telophase &amp; Cytokinesis &mdash; new nuclei form, the cell splits in two.",
+          recap: "Telophase &amp; Cytokinesis: new nuclei form, the cell splits in two.",
           dnaHelixOpacity: 0,
           chrom: SLOTS.map((s) => ({
             a: { x: s * 0.3, y: 3.3, z: -4 },
@@ -830,7 +820,7 @@
           question: "What holds the two identical copies of a chromosome together until anaphase?",
           choices: ["The nuclear envelope", "A spindle fiber", "The centromere", "The cell membrane"],
           answer: 2,
-          explain: "The centromere is the pinch point holding sister chromatids together — it splits at anaphase.",
+          explain: "The centromere is the pinch point holding sister chromatids together. It splits at anaphase.",
         },
         {
           question: "In Metaphase, where do the chromosomes line up?",
@@ -858,7 +848,7 @@
             "The mitochondria divide first",
           ],
           answer: 1,
-          explain: "Cytokinesis is the physical split — the membrane pinches down the middle until there are two independent cells.",
+          explain: "Cytokinesis is the physical split: the membrane pinches down the middle until there are two independent cells.",
         },
       ];
 
@@ -986,10 +976,10 @@
         quizExplainEl.hidden = false;
         quizExplainEl.textContent =
           quizScore === QUIZ.length
-            ? "Perfect score — you've got the whole process down."
+            ? "Perfect score. You've got the whole process down."
             : quizScore >= QUIZ.length - 1
             ? "Almost perfect. Review the phase you missed and you'll have it cold."
-            : "Worth a rewatch — step back through the phases and try again.";
+            : "Worth a rewatch. Step back through the phases and try again.";
         quizNextBtn.hidden = true;
         quizRetakeBtn.hidden = false;
       }
