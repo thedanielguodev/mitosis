@@ -1,0 +1,1571 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mitosis</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AC%3C/text%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+    <style>
+      :root {
+        --bg: #05060a;
+        --panel: rgba(17, 19, 30, 0.72);
+        --panel-solid: #12141f;
+        --border: rgba(255, 255, 255, 0.09);
+        --text: #f3f4f8;
+        --text-dim: #9296ab;
+        --accent-a: #7c5cff;
+        --accent-b: #22d3ee;
+        --accent-grad: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+        --good: #34d399;
+        --bad: #f87171;
+        --warn: #fbbf24;
+      }
+
+      html, body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      button {
+        font-family: inherit;
+      }
+
+      #hud {
+        position: fixed;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        width: min(600px, 94vw);
+        background: var(--panel);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        box-shadow: 0 20px 60px -12px rgba(124, 92, 255, 0.25), 0 8px 30px rgba(0, 0, 0, 0.5);
+        padding: 14px 18px 16px;
+        color: var(--text);
+        z-index: 999;
+        box-sizing: border-box;
+      }
+
+      #hudTop {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      #phaseName {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      #phaseCounter {
+        font-size: 0.72rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+        font-variant-numeric: tabular-nums;
+      }
+
+      #phaseDesc {
+        margin: 6px 0 4px;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        color: #d6d8e4;
+      }
+
+      #entityInfo {
+        min-height: 1.2em;
+        margin: 4px 0 10px;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        color: var(--text-dim);
+        border-left: 3px solid transparent;
+        border-radius: 6px;
+        transition: background 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+      }
+
+      #entityInfo.flash {
+        background: rgba(251, 191, 36, 0.14);
+        border-left-color: var(--warn);
+        color: #ffe9b3;
+      }
+
+      #exploreProgress {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 10px;
+      }
+
+      #exploreBarTrack {
+        flex: 1;
+        height: 5px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      #exploreBarFill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent-grad);
+        transition: width 0.3s ease;
+      }
+
+      #exploreBarFill.complete {
+        background: var(--good);
+      }
+
+      #exploreLabel {
+        font-size: 0.7rem;
+        color: var(--text-dim);
+        white-space: nowrap;
+      }
+
+      #dots {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        margin-bottom: 10px;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.18);
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        transition: width 0.25s ease, background 0.25s ease;
+      }
+
+      .dot.active {
+        width: 22px;
+        background: var(--accent-grad);
+      }
+
+      #controls {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+      }
+
+      #controls button {
+        flex: 1;
+        max-width: 150px;
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--text);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s ease, transform 0.15s ease, border-color 0.2s ease;
+      }
+
+      #controls button:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+
+      #controls button:active:not(:disabled) {
+        transform: scale(0.97);
+      }
+
+      #controls button:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
+      #controls #nextBtn {
+        background: var(--accent-grad);
+        border-color: transparent;
+        color: #fff;
+        font-weight: 600;
+      }
+
+      #controls #nextBtn:hover:not(:disabled) {
+        filter: brightness(1.1);
+      }
+
+      #hint {
+        position: fixed;
+        top: 14px;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--panel);
+        backdrop-filter: blur(20px) saturate(160%);
+        -webkit-backdrop-filter: blur(20px) saturate(160%);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        padding: 8px 10px 8px 16px;
+        color: var(--text-dim);
+        font-size: 0.76rem;
+        z-index: 999;
+        max-width: 92vw;
+      }
+
+      #goalBtn,
+      #quizBtn {
+        flex: none;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        font-size: 0.72rem;
+        font-weight: 500;
+        padding: 6px 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.2s ease;
+      }
+
+      #goalBtn:hover,
+      #quizBtn:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+
+      #movePad {
+        position: fixed;
+        top: 18px;
+        right: 18px;
+        z-index: 999;
+        text-align: center;
+      }
+
+      #movePad .pad-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 38px);
+        grid-template-rows: repeat(3, 38px);
+        gap: 5px;
+      }
+
+      #movePad button {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        color: var(--text);
+        font-size: 1rem;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+        transition: background 0.15s ease;
+      }
+
+      #movePad button:active {
+        background: rgba(124, 92, 255, 0.35);
+      }
+
+      #moveForward { grid-column: 2; grid-row: 1; }
+      #moveLeft { grid-column: 1; grid-row: 2; }
+      #moveRight { grid-column: 3; grid-row: 2; }
+      #moveBack { grid-column: 2; grid-row: 3; }
+
+      #movePad .pad-label {
+        margin-top: 6px;
+        font-size: 0.7rem;
+        color: var(--text-dim);
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 3, 8, 0.7);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1500;
+        padding: 20px;
+        box-sizing: border-box;
+      }
+
+      .overlay[hidden] {
+        display: none;
+      }
+
+      .overlay-card {
+        background: var(--panel-solid);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        box-shadow: 0 30px 80px -20px rgba(124, 92, 255, 0.35), 0 20px 60px rgba(0, 0, 0, 0.6);
+        max-width: 520px;
+        width: 100%;
+        max-height: 86vh;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+        padding: 26px 28px 28px;
+        color: var(--text);
+        box-sizing: border-box;
+      }
+
+      .overlay-card h1 {
+        margin: 0 0 12px;
+        font-size: 1.7rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        background: var(--accent-grad);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+
+      .overlay-card h2 {
+        margin: 0 0 10px;
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+
+      .overlay-card p {
+        margin: 0 0 12px;
+        font-size: 0.92rem;
+        line-height: 1.55;
+        color: #d6d8e4;
+      }
+
+      .overlay-card .goal {
+        background: rgba(124, 92, 255, 0.12);
+        border-left: 3px solid var(--accent-a);
+        padding: 10px 14px;
+        border-radius: 8px;
+        color: var(--text);
+      }
+
+      .overlay-card ol.recap {
+        margin: 0 0 16px;
+        padding-left: 20px;
+        font-size: 0.88rem;
+        line-height: 1.7;
+        color: #d6d8e4;
+      }
+
+      .quiz-progress {
+        margin: 0 0 6px;
+        font-size: 0.76rem;
+        color: var(--text-dim);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .quiz-question {
+        font-weight: 700;
+        font-size: 1.02rem;
+        margin: 0 0 14px;
+      }
+
+      .quiz-choices {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .overlay-card button.quiz-choice {
+        text-align: left;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--text);
+        padding: 11px 14px;
+        font-size: 0.88rem;
+        cursor: pointer;
+        transition: background 0.15s ease, border-color 0.15s ease;
+      }
+
+      .overlay-card button.quiz-choice:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.09);
+      }
+
+      .overlay-card button.quiz-choice.correct {
+        border-color: var(--good);
+        background: rgba(52, 211, 153, 0.14);
+      }
+
+      .overlay-card button.quiz-choice.incorrect {
+        border-color: var(--bad);
+        background: rgba(248, 113, 113, 0.14);
+      }
+
+      .overlay-card button.quiz-choice:disabled {
+        cursor: default;
+        opacity: 0.95;
+      }
+
+      .quiz-explain {
+        background: rgba(255, 255, 255, 0.05);
+        border-left: 3px solid rgba(255, 255, 255, 0.25);
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.86rem;
+        color: #d6d8e4;
+      }
+
+      .overlay-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .overlay-card button {
+        border: 1px solid transparent;
+        border-radius: 10px;
+        background: var(--accent-grad);
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 11px 20px;
+        cursor: pointer;
+        transition: filter 0.15s ease, transform 0.15s ease;
+      }
+
+      .overlay-card button:hover {
+        filter: brightness(1.1);
+      }
+
+      .overlay-card button:active {
+        transform: scale(0.97);
+      }
+
+      .overlay-card button.secondary {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: var(--border);
+        color: var(--text);
+      }
+
+      .overlay-card button.secondary:hover {
+        background: rgba(255, 255, 255, 0.12);
+        filter: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="introOverlay" class="overlay">
+      <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="introTitle">
+        <h1 id="introTitle">Mitosis: Cell Division</h1>
+        <p class="goal">
+          <strong>Learning goal:</strong> by the end, you should be able to name each
+          stage of mitosis in order, describe what happens to the DNA and the cell
+          membrane at each one, and explain why the cell needs mitochondria to pull it off.
+        </p>
+        <p>
+          Step through the 5 phases with the buttons at the bottom of the screen.
+          Click on parts of the cell (chromosomes, membranes, spindle fibers,
+          mitochondria) to learn what they do. Move around with the pad in the
+          top-right corner, and look around by dragging.
+        </p>
+        <div class="overlay-actions">
+          <button id="startBtn">Begin &rarr;</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="outroOverlay" class="overlay" hidden>
+      <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="outroTitle">
+        <h2 id="outroTitle">Division complete</h2>
+        <p>
+          One cell became two, each with a full, identical copy of the DNA &mdash;
+          that's mitosis. Your body runs this process constantly to grow, replace
+          worn-out cells, and heal wounds, and every step of it is powered by the
+          ATP the mitochondria supplied along the way.
+        </p>
+        <ol class="recap" id="recapList"></ol>
+        <div class="overlay-actions">
+          <button id="restartBtn">Watch again</button>
+          <button id="reviewBtn" class="secondary">Review phases</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="quizOverlay" class="overlay" hidden>
+      <div class="overlay-card" role="dialog" aria-modal="true" aria-labelledby="quizTitle">
+        <h2 id="quizTitle">Quick check</h2>
+        <p class="quiz-progress" id="quizProgress"></p>
+        <p class="quiz-question" id="quizQuestion"></p>
+        <div class="quiz-choices" id="quizChoices"></div>
+        <p class="quiz-explain" id="quizExplain" hidden></p>
+        <div class="overlay-actions">
+          <button id="quizNextBtn" hidden>Next question &rarr;</button>
+          <button id="quizRetakeBtn" hidden>Retake quiz</button>
+          <button id="quizCloseBtn" class="secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="hint">
+      <span>click stuff to see what it does (try the mitochondria for an ATP burst), buttons below go through the phases</span>
+      <button id="quizBtn" title="take a short quiz">quiz</button>
+      <button id="goalBtn" title="show the learning goal again">learning goal</button>
+    </div>
+
+    <div id="movePad">
+      <div class="pad-grid">
+        <button id="moveForward" aria-label="move forward">&uarr;</button>
+        <button id="moveLeft" aria-label="move left">&larr;</button>
+        <button id="moveRight" aria-label="move right">&rarr;</button>
+        <button id="moveBack" aria-label="move back">&darr;</button>
+      </div>
+      <div class="pad-label">move</div>
+    </div>
+
+    <a-scene>
+
+      <a-sky src="hi.jpg"></a-sky>
+
+      <a-plane
+        position="0 0 -4"
+        rotation="-90 0 0"
+        width="12"
+        height="16"
+        color="#161826">
+      </a-plane>
+
+      <!-- cell + membranes -->
+
+      <a-sphere
+        id="cellMembrane"
+        position="0 2 -4"
+        radius="1.8"
+        material="color: #ffd8e6; opacity: 0.15; transparent: true; side: double; depthWrite: false"
+        data-info="cell membrane. the outside wall. pinches inward during cytokinesis until it splits into two.">
+      </a-sphere>
+
+      <a-sphere id="membraneA" position="0 3.3 -4" radius="1" material="color: #ffd8e6; opacity: 0; transparent: true; side: double; depthWrite: false"
+        data-info="new membrane forming around one of the daughter cells.">
+      </a-sphere>
+      <a-sphere id="membraneB" position="0 0.7 -4" radius="1" material="color: #ffd8e6; opacity: 0; transparent: true; side: double; depthWrite: false"
+        data-info="new membrane forming around the other daughter cell.">
+      </a-sphere>
+
+      <a-sphere
+        id="nuclearEnvelope"
+        position="0 2 -4"
+        radius="1.05"
+        material="color: #7ec8ff; opacity: 0; transparent: true; side: double; depthWrite: false"
+        data-info="nuclear envelope, the wrapper around the DNA. dissolves in prophase, comes back in telophase.">
+      </a-sphere>
+
+      <a-sphere id="envelopeTop" position="0 3.3 -4" radius="0.65" material="color: #7ec8ff; opacity: 0; transparent: true; side: double; depthWrite: false"
+        data-info="new nuclear envelope forming around this half's chromosomes.">
+      </a-sphere>
+      <a-sphere id="envelopeBottom" position="0 0.7 -4" radius="0.65" material="color: #7ec8ff; opacity: 0; transparent: true; side: double; depthWrite: false"
+        data-info="new nuclear envelope forming around this half's chromosomes.">
+      </a-sphere>
+
+      <!-- spindle fibers -->
+
+      <a-cylinder class="spindle-fiber" position="0 2.65 -4" radius="0.025" height="1.3"
+        material="color: #ffe083; opacity: 0; transparent: true"
+        data-info="spindle fiber. pulls the chromosomes apart during anaphase.">
+      </a-cylinder>
+      <a-cylinder class="spindle-fiber" position="0.3 2.65 -4" rotation="0 0 -25" radius="0.025" height="1.43"
+        material="color: #ffe083; opacity: 0; transparent: true"
+        data-info="spindle fiber. pulls the chromosomes apart during anaphase.">
+      </a-cylinder>
+      <a-cylinder class="spindle-fiber" position="-0.3 2.65 -4" rotation="0 0 25" radius="0.025" height="1.43"
+        material="color: #ffe083; opacity: 0; transparent: true"
+        data-info="spindle fiber. pulls the chromosomes apart during anaphase.">
+      </a-cylinder>
+
+      <a-cylinder class="spindle-fiber" position="0 1.35 -4" radius="0.025" height="1.3"
+        material="color: #ffe083; opacity: 0; transparent: true"
+        data-info="spindle fiber. pulls the chromosomes apart during anaphase.">
+      </a-cylinder>
+      <a-cylinder class="spindle-fiber" position="0.3 1.35 -4" rotation="0 0 25" radius="0.025" height="1.43"
+        material="color: #ffe083; opacity: 0; transparent: true"
+        data-info="spindle fiber. pulls the chromosomes apart during anaphase.">
+      </a-cylinder>
+      <a-cylinder class="spindle-fiber" position="-0.3 1.35 -4" rotation="0 0 -25" radius="0.025" height="1.43"
+        material="color: #ffe083; opacity: 0; transparent: true"
+        data-info="spindle fiber. pulls the chromosomes apart during anaphase.">
+      </a-cylinder>
+
+      <!-- chromosomes: 3 pairs of sister chromatids -->
+
+      <a-box id="chr1A" position="0 0 0" width="0.16" height="0.42" depth="0.16"
+        material="color: #ff5566; opacity: 0; transparent: true"
+        data-info="chromosome 1 (red). coiled-up DNA. the two halves are identical copies of each other.">
+      </a-box>
+      <a-box id="chr1B" position="0 0 0" width="0.16" height="0.42" depth="0.16"
+        material="color: #ff5566; opacity: 0; transparent: true"
+        data-info="chromosome 1 (red). coiled-up DNA. the two halves are identical copies of each other.">
+      </a-box>
+      <a-sphere id="centromere1" position="0 0 0" radius="0.09"
+        material="color: #ffffff; opacity: 0; transparent: true"
+        data-info="centromere. holds the two copies together until anaphase splits them apart.">
+      </a-sphere>
+
+      <a-box id="chr2A" position="0 0 0" width="0.16" height="0.42" depth="0.16"
+        material="color: #55d67a; opacity: 0; transparent: true"
+        data-info="chromosome 2 (green). coiled-up DNA. the two halves are identical copies of each other.">
+      </a-box>
+      <a-box id="chr2B" position="0 0 0" width="0.16" height="0.42" depth="0.16"
+        material="color: #55d67a; opacity: 0; transparent: true"
+        data-info="chromosome 2 (green). coiled-up DNA. the two halves are identical copies of each other.">
+      </a-box>
+      <a-sphere id="centromere2" position="0 0 0" radius="0.09"
+        material="color: #ffffff; opacity: 0; transparent: true"
+        data-info="centromere. holds the two copies together until anaphase splits them apart.">
+      </a-sphere>
+
+      <a-box id="chr3A" position="0 0 0" width="0.16" height="0.42" depth="0.16"
+        material="color: #5599ff; opacity: 0; transparent: true"
+        data-info="chromosome 3 (blue). coiled-up DNA. the two halves are identical copies of each other.">
+      </a-box>
+      <a-box id="chr3B" position="0 0 0" width="0.16" height="0.42" depth="0.16"
+        material="color: #5599ff; opacity: 0; transparent: true"
+        data-info="chromosome 3 (blue). coiled-up DNA. the two halves are identical copies of each other.">
+      </a-box>
+      <a-sphere id="centromere3" position="0 0 0" radius="0.09"
+        material="color: #ffffff; opacity: 0; transparent: true"
+        data-info="centromere. holds the two copies together until anaphase splits them apart.">
+      </a-sphere>
+
+      <!-- mount point for the procedural three.js DNA helix (interphase only) -->
+      <a-entity id="dnaMount" position="0 2 -4"></a-entity>
+
+      <!-- mitochondria: procedural three.js mesh mounted below, not a model asset -->
+
+      <a-entity
+        id="mitochondria"
+        position="-2.4 1.5 -3.3"
+        scale="0.6 0.6 0.6"
+        animation="property: scale; dir: alternate; dur: 1200; loop: true; to: 0.66 0.66 0.66; easing: easeInOutSine"
+        data-info="mitochondria. the powerhouse of the cell, makes the ATP energy needed to actually divide.">
+      </a-entity>
+
+      <!-- camera / lights -->
+
+      <a-entity
+        id="rig"
+        movement-controls="fly: false"
+        position="0 1.6 3">
+        <a-camera>
+          <a-cursor id="gazeCursor" cursor="fuse: false" raycaster="objects: [data-info]"></a-cursor>
+        </a-camera>
+        <a-entity laser-controls="hand: left" raycaster="objects: [data-info]; far: 8"></a-entity>
+        <a-entity laser-controls="hand: right" raycaster="objects: [data-info]; far: 8"></a-entity>
+      </a-entity>
+
+      <a-light type="ambient" intensity="0.7"></a-light>
+      <a-light type="directional" intensity="0.8" position="2 4 3"></a-light>
+
+      <a-text
+        value="Mitosis - Cell Division"
+        position="0 0.1 1"
+        color="white"
+        align="center"
+        rotation="-90 90 0">
+      </a-text>
+
+    </a-scene>
+
+    <div id="hud">
+      <div id="hudTop">
+        <h2 id="phaseName" aria-live="polite"></h2>
+        <span id="phaseCounter"></span>
+      </div>
+      <p id="phaseDesc" aria-live="polite"></p>
+      <p id="entityInfo" aria-live="polite"></p>
+      <div id="exploreProgress">
+        <div id="exploreBarTrack"><div id="exploreBarFill"></div></div>
+        <span id="exploreLabel"></span>
+      </div>
+      <div id="dots"></div>
+      <div id="controls">
+        <button id="prevBtn">&larr; back</button>
+        <button id="playBtn">auto play</button>
+        <button id="nextBtn">next &rarr;</button>
+      </div>
+    </div>
+
+    <script>
+      const SLOTS = [-0.6, 0, 0.6];
+
+      const SCATTER = [
+        { x: -0.35, y: 2.25, z: -3.75 },
+        { x: 0.15, y: 1.75, z: -4.25 },
+        { x: -0.05, y: 2.05, z: -3.95 },
+      ];
+
+      function chromLoose(spread) {
+        return SLOTS.map((_, i) => {
+          const c = SCATTER[i];
+          return {
+            a: { x: c.x, y: c.y + spread, z: c.z },
+            b: { x: c.x, y: c.y - spread, z: c.z },
+          };
+        });
+      }
+
+      const PHASES = [
+        {
+          name: "Interphase",
+          description:
+            "This is before anything really happens. The cell is just growing and making a copy of all its DNA. Right now the DNA is loose strands (chromatin) floating around in the nucleus, nothing organized yet.",
+          recap: "Interphase &mdash; the cell grows and copies its DNA.",
+          dnaHelixOpacity: 0.85,
+          chrom: chromLoose(0.05),
+          chromOpacity: 0.35,
+          chromScale: 0.6,
+          centromereOpacity: 0,
+          nuclearEnvelopeOpacity: 0.3,
+          spindleOpacity: 0,
+          cellMembraneOpacity: 0.15,
+          daughterMembraneOpacity: 0,
+          daughterEnvelopeOpacity: 0,
+        },
+        {
+          name: "Prophase",
+          description:
+            "The DNA starts coiling up tight into chromosomes you can actually make out. Each one is two identical copies (sister chromatids) stuck together at the centromere. The nucleus's outer layer starts dissolving and spindle fibers start growing in from both ends of the cell.",
+          recap: "Prophase &mdash; DNA coils into chromosomes, spindle fibers form.",
+          dnaHelixOpacity: 0,
+          chrom: chromLoose(0.18),
+          chromOpacity: 1,
+          chromScale: 1,
+          centromereOpacity: 1,
+          nuclearEnvelopeOpacity: 0.12,
+          spindleOpacity: 0.5,
+          cellMembraneOpacity: 0.15,
+          daughterMembraneOpacity: 0,
+          daughterEnvelopeOpacity: 0,
+        },
+        {
+          name: "Metaphase",
+          description:
+            "All three chromosomes get pulled to the exact middle of the cell and line up in a row. Kind of a checkpoint, the cell makes sure everything's lined up right before it starts pulling things apart.",
+          recap: "Metaphase &mdash; chromosomes line up in the middle.",
+          dnaHelixOpacity: 0,
+          chrom: SLOTS.map((s) => ({
+            a: { x: s, y: 2.15, z: -4 },
+            b: { x: s, y: 1.85, z: -4 },
+          })),
+          chromOpacity: 1,
+          chromScale: 1,
+          centromereOpacity: 1,
+          nuclearEnvelopeOpacity: 0,
+          spindleOpacity: 0.9,
+          cellMembraneOpacity: 0.15,
+          daughterMembraneOpacity: 0,
+          daughterEnvelopeOpacity: 0,
+        },
+        {
+          name: "Anaphase",
+          description:
+            "The centromeres split and the two copies of each chromosome get yanked to opposite ends of the cell. Once they're separated they're just called chromosomes again, not sister chromatids.",
+          recap: "Anaphase &mdash; sister chromatids get pulled to opposite ends.",
+          dnaHelixOpacity: 0,
+          chrom: SLOTS.map((s) => ({
+            a: { x: s * 0.6, y: 3.2, z: -4 },
+            b: { x: s * 0.6, y: 0.8, z: -4 },
+          })),
+          chromOpacity: 1,
+          chromScale: 1,
+          centromereOpacity: 0,
+          nuclearEnvelopeOpacity: 0,
+          spindleOpacity: 0.6,
+          cellMembraneOpacity: 0.15,
+          daughterMembraneOpacity: 0,
+          daughterEnvelopeOpacity: 0,
+        },
+        {
+          name: "Telophase & Cytokinesis",
+          description:
+            "Two new nuclei start forming around each cluster of chromosomes, and the DNA loosens back up. Then the whole cell pinches in down the middle until there are two separate cells.",
+          recap: "Telophase &amp; Cytokinesis &mdash; new nuclei form, the cell splits in two.",
+          dnaHelixOpacity: 0,
+          chrom: SLOTS.map((s) => ({
+            a: { x: s * 0.3, y: 3.3, z: -4 },
+            b: { x: s * 0.3, y: 0.7, z: -4 },
+          })),
+          chromOpacity: 0.5,
+          chromScale: 0.6,
+          centromereOpacity: 0,
+          nuclearEnvelopeOpacity: 0,
+          spindleOpacity: 0,
+          cellMembraneOpacity: 0,
+          daughterMembraneOpacity: 0.15,
+          daughterEnvelopeOpacity: 0.3,
+        },
+      ];
+
+      const QUIZ = [
+        {
+          question: "During Interphase, what's happening to the DNA?",
+          choices: [
+            "It's tightly coiled into visible chromosomes",
+            "It's loose chromatin, being copied",
+            "It's being pulled to opposite ends of the cell",
+            "It's splitting into two separate nuclei",
+          ],
+          answer: 1,
+          explain:
+            "Interphase is prep work: the DNA stays loose (chromatin) while the cell copies it, so both new cells get a full set.",
+        },
+        {
+          question: "What holds the two identical copies of a chromosome together until anaphase?",
+          choices: ["The nuclear envelope", "A spindle fiber", "The centromere", "The cell membrane"],
+          answer: 2,
+          explain: "The centromere is the pinch point holding sister chromatids together — it splits at anaphase.",
+        },
+        {
+          question: "In Metaphase, where do the chromosomes line up?",
+          choices: [
+            "Randomly scattered in the nucleus",
+            "Along the exact middle of the cell",
+            "At one end of the cell",
+            "Outside the cell membrane",
+          ],
+          answer: 1,
+          explain: "Metaphase is a checkpoint: every chromosome lines up along the cell's midline before anything gets pulled apart.",
+        },
+        {
+          question: "What pulls the sister chromatids apart during Anaphase?",
+          choices: ["Mitochondria", "The nuclear envelope", "Spindle fibers", "The cell membrane"],
+          answer: 2,
+          explain: "Spindle fibers, anchored at opposite poles, shorten and drag one copy of each chromosome to each side.",
+        },
+        {
+          question: "What finally makes two separate daughter cells in Telophase & Cytokinesis?",
+          choices: [
+            "The DNA disappears",
+            "The cell membrane pinches inward until it splits",
+            "The spindle fibers merge into one",
+            "The mitochondria divide first",
+          ],
+          answer: 1,
+          explain: "Cytokinesis is the physical split — the membrane pinches down the middle until there are two independent cells.",
+        },
+      ];
+
+      let currentPhase = 0;
+      let autoplayTimer = null;
+      let dnaHelix = null;
+
+      const phaseNameEl = document.getElementById("phaseName");
+      const phaseCounterEl = document.getElementById("phaseCounter");
+      const phaseDescEl = document.getElementById("phaseDesc");
+      const entityInfoEl = document.getElementById("entityInfo");
+      const dotsEl = document.getElementById("dots");
+      const prevBtn = document.getElementById("prevBtn");
+      const nextBtn = document.getElementById("nextBtn");
+      const playBtn = document.getElementById("playBtn");
+      const introOverlay = document.getElementById("introOverlay");
+      const outroOverlay = document.getElementById("outroOverlay");
+      const startBtn = document.getElementById("startBtn");
+      const restartBtn = document.getElementById("restartBtn");
+      const reviewBtn = document.getElementById("reviewBtn");
+      const goalBtn = document.getElementById("goalBtn");
+      const quizOverlay = document.getElementById("quizOverlay");
+      const quizBtn = document.getElementById("quizBtn");
+      const quizTitleEl = document.getElementById("quizTitle");
+      const quizProgressEl = document.getElementById("quizProgress");
+      const quizQuestionEl = document.getElementById("quizQuestion");
+      const quizChoicesEl = document.getElementById("quizChoices");
+      const quizExplainEl = document.getElementById("quizExplain");
+      const quizNextBtn = document.getElementById("quizNextBtn");
+      const quizRetakeBtn = document.getElementById("quizRetakeBtn");
+      const quizCloseBtn = document.getElementById("quizCloseBtn");
+      const recapListEl = document.getElementById("recapList");
+      const exploreBarFill = document.getElementById("exploreBarFill");
+      const exploreLabel = document.getElementById("exploreLabel");
+
+      recapListEl.innerHTML = PHASES.map((p) => `<li>${p.recap}</li>`).join("");
+
+      // discovery tracker: counts unique clickable concepts (several
+      // elements like the 6 spindle fibers share one data-info string and
+      // count once), persisted so returning visitors keep their progress.
+      const DISCOVERY_KEY = "mitosisDiscovered";
+      const TOTAL_DISCOVERABLE = new Set(
+        Array.from(document.querySelectorAll("[data-info]")).map((el) => el.dataset.info)
+      ).size;
+      const discovered = new Set(JSON.parse(localStorage.getItem(DISCOVERY_KEY) || "[]"));
+
+      function updateExploreProgress() {
+        exploreLabel.textContent = `explored ${discovered.size}/${TOTAL_DISCOVERABLE}`;
+        const pct = (discovered.size / TOTAL_DISCOVERABLE) * 100;
+        exploreBarFill.style.width = `${pct}%`;
+        exploreBarFill.classList.toggle("complete", discovered.size === TOTAL_DISCOVERABLE);
+      }
+
+      function markDiscovered(info) {
+        if (discovered.has(info)) return;
+        discovered.add(info);
+        localStorage.setItem(DISCOVERY_KEY, JSON.stringify(Array.from(discovered)));
+        updateExploreProgress();
+      }
+
+      updateExploreProgress();
+
+      function overlayOpen() {
+        return !introOverlay.hidden || !outroOverlay.hidden || !quizOverlay.hidden;
+      }
+
+      let quizIndex = 0;
+      let quizScore = 0;
+      let quizAnswered = false;
+
+      function openQuiz() {
+        quizIndex = 0;
+        quizScore = 0;
+        quizTitleEl.textContent = "Quick check";
+        quizOverlay.hidden = false;
+        renderQuizQuestion();
+      }
+
+      function closeQuiz() {
+        quizOverlay.hidden = true;
+      }
+
+      function renderQuizQuestion() {
+        quizAnswered = false;
+        const q = QUIZ[quizIndex];
+        quizProgressEl.textContent = `Question ${quizIndex + 1}/${QUIZ.length} · score ${quizScore}`;
+        quizQuestionEl.textContent = q.question;
+        quizExplainEl.hidden = true;
+        quizExplainEl.textContent = "";
+        quizNextBtn.hidden = true;
+        quizRetakeBtn.hidden = true;
+        quizChoicesEl.innerHTML = "";
+        q.choices.forEach((choice, i) => {
+          const btn = document.createElement("button");
+          btn.className = "quiz-choice";
+          btn.textContent = choice;
+          btn.addEventListener("click", () => selectQuizAnswer(i));
+          quizChoicesEl.appendChild(btn);
+        });
+      }
+
+      function selectQuizAnswer(i) {
+        if (quizAnswered) return;
+        quizAnswered = true;
+        const q = QUIZ[quizIndex];
+        const correct = i === q.answer;
+        if (correct) quizScore++;
+        Array.from(quizChoicesEl.children).forEach((btn, idx) => {
+          btn.disabled = true;
+          if (idx === q.answer) btn.classList.add("correct");
+          else if (idx === i) btn.classList.add("incorrect");
+        });
+        quizExplainEl.textContent = (correct ? "Correct. " : "Not quite. ") + q.explain;
+        quizExplainEl.hidden = false;
+        quizProgressEl.textContent = `Question ${quizIndex + 1}/${QUIZ.length} · score ${quizScore}`;
+        quizNextBtn.hidden = false;
+        quizNextBtn.textContent = quizIndex < QUIZ.length - 1 ? "Next question →" : "See results";
+      }
+
+      function renderQuizResults() {
+        quizTitleEl.textContent = "Quiz results";
+        quizProgressEl.textContent = "";
+        quizQuestionEl.textContent = `You scored ${quizScore}/${QUIZ.length}`;
+        quizChoicesEl.innerHTML = "";
+        quizExplainEl.hidden = false;
+        quizExplainEl.textContent =
+          quizScore === QUIZ.length
+            ? "Perfect score — you've got the whole process down."
+            : quizScore >= QUIZ.length - 1
+            ? "Almost perfect. Review the phase you missed and you'll have it cold."
+            : "Worth a rewatch — step back through the phases and try again.";
+        quizNextBtn.hidden = true;
+        quizRetakeBtn.hidden = false;
+      }
+
+      quizNextBtn.addEventListener("click", () => {
+        if (quizIndex < QUIZ.length - 1) {
+          quizIndex++;
+          renderQuizQuestion();
+        } else {
+          renderQuizResults();
+        }
+      });
+
+      quizBtn.addEventListener("click", openQuiz);
+      quizCloseBtn.addEventListener("click", closeQuiz);
+      quizRetakeBtn.addEventListener("click", openQuiz);
+
+      function showOutro() {
+        outroOverlay.hidden = false;
+      }
+
+      function hideOutro() {
+        outroOverlay.hidden = true;
+      }
+
+      startBtn.addEventListener("click", () => {
+        introOverlay.hidden = true;
+      });
+
+      goalBtn.addEventListener("click", () => {
+        introOverlay.hidden = false;
+      });
+
+      restartBtn.addEventListener("click", () => {
+        hideOutro();
+        applyPhase(0, true);
+      });
+
+      reviewBtn.addEventListener("click", () => {
+        hideOutro();
+        applyPhase(PHASES.length - 1, true);
+      });
+
+      PHASES.forEach((p, i) => {
+        const dot = document.createElement("button");
+        dot.className = "dot";
+        dot.title = p.name;
+        dot.setAttribute("aria-label", `go to ${p.name}`);
+        dot.addEventListener("click", () => {
+          stopAutoplay();
+          applyPhase(i);
+        });
+        dotsEl.appendChild(dot);
+      });
+      const dotEls = Array.from(dotsEl.children);
+
+      function setPos(sel, pos, dur) {
+        const el = document.querySelector(sel);
+        if (dur === 0) {
+          el.setAttribute("position", pos);
+        } else {
+          el.setAttribute("animation__pos", {
+            property: "position",
+            to: `${pos.x} ${pos.y} ${pos.z}`,
+            dur,
+            easing: "easeInOutQuad",
+          });
+        }
+      }
+
+      function setOpacity(sel, val, dur) {
+        const el = document.querySelector(sel);
+        if (dur === 0) {
+          el.setAttribute("material", "opacity", val);
+        } else {
+          el.setAttribute("animation__op", {
+            property: "material.opacity",
+            to: val,
+            dur,
+            easing: "easeInOutQuad",
+          });
+        }
+      }
+
+      // synthesized phase-transition tone (Web Audio API, no extra asset).
+      // browsers block audio until a user gesture, so the context is
+      // created/resumed lazily on the first click anywhere on the page.
+      let audioCtx = null;
+      function unlockAudio() {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } else if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+      }
+      document.addEventListener("click", unlockAudio, { once: true });
+
+      function playPhaseTone() {
+        if (!audioCtx || audioCtx.state !== "running") return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(520, audioCtx.currentTime + 0.22);
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.32);
+      }
+
+      // synthesized double-pulse "energy release" sound for the
+      // mitochondria click, replacing the old sampled heart-sound.mp3.
+      function playPulseTone() {
+        if (!audioCtx || audioCtx.state !== "running") return;
+        const now = audioCtx.currentTime;
+        [0, 0.12].forEach((offset) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(180, now + offset);
+          osc.frequency.exponentialRampToValueAtTime(90, now + offset + 0.15);
+          gain.gain.setValueAtTime(0.0001, now + offset);
+          gain.gain.linearRampToValueAtTime(0.14, now + offset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.18);
+          osc.connect(gain).connect(audioCtx.destination);
+          osc.start(now + offset);
+          osc.stop(now + offset + 0.2);
+        });
+      }
+
+      function setScale(sel, val, dur) {
+        const el = document.querySelector(sel);
+        if (dur === 0) {
+          el.setAttribute("scale", `${val} ${val} ${val}`);
+        } else {
+          el.setAttribute("animation__scale", {
+            property: "scale",
+            to: `${val} ${val} ${val}`,
+            dur,
+            easing: "easeInOutQuad",
+          });
+        }
+      }
+
+      function applyPhase(index, instant) {
+        currentPhase = index;
+        const p = PHASES[index];
+        const dur = instant ? 0 : 1200;
+
+        if (!instant) playPhaseTone();
+
+        phaseNameEl.textContent = p.name;
+        phaseCounterEl.textContent = `${index + 1}/${PHASES.length}`;
+        phaseDescEl.textContent = p.description;
+        entityInfoEl.textContent = "";
+        entityInfoEl.classList.remove("flash");
+        dotEls.forEach((d, i) => d.classList.toggle("active", i === index));
+        prevBtn.disabled = index === 0;
+        nextBtn.textContent = index === PHASES.length - 1 ? "finish ✓" : "next →";
+
+        p.chrom.forEach((c, i) => {
+          const n = i + 1;
+          setPos(`#chr${n}A`, c.a, dur);
+          setPos(`#chr${n}B`, c.b, dur);
+          setOpacity(`#chr${n}A`, p.chromOpacity, dur);
+          setOpacity(`#chr${n}B`, p.chromOpacity, dur);
+          setScale(`#chr${n}A`, p.chromScale, dur);
+          setScale(`#chr${n}B`, p.chromScale, dur);
+
+          const mid = {
+            x: (c.a.x + c.b.x) / 2,
+            y: (c.a.y + c.b.y) / 2,
+            z: (c.a.z + c.b.z) / 2,
+          };
+          setPos(`#centromere${n}`, mid, dur);
+          setOpacity(`#centromere${n}`, p.centromereOpacity, dur);
+        });
+
+        setOpacity("#nuclearEnvelope", p.nuclearEnvelopeOpacity, dur);
+        setOpacity("#envelopeTop", p.daughterEnvelopeOpacity, dur);
+        setOpacity("#envelopeBottom", p.daughterEnvelopeOpacity, dur);
+        setOpacity("#cellMembrane", p.cellMembraneOpacity, dur);
+        setOpacity("#membraneA", p.daughterMembraneOpacity, dur);
+        setOpacity("#membraneB", p.daughterMembraneOpacity, dur);
+
+        document.querySelectorAll(".spindle-fiber").forEach((el) => {
+          if (dur === 0) {
+            el.setAttribute("material", "opacity", p.spindleOpacity);
+          } else {
+            el.setAttribute("animation__op", {
+              property: "material.opacity",
+              to: p.spindleOpacity,
+              dur,
+              easing: "easeInOutQuad",
+            });
+          }
+        });
+
+        if (dnaHelix) dnaHelix.setOpacity(p.dnaHelixOpacity, dur);
+      }
+
+      function stopAutoplay() {
+        if (autoplayTimer) {
+          clearInterval(autoplayTimer);
+          autoplayTimer = null;
+          playBtn.textContent = "auto play";
+        }
+      }
+
+      function goNext() {
+        stopAutoplay();
+        if (currentPhase < PHASES.length - 1) {
+          applyPhase(currentPhase + 1);
+        } else {
+          showOutro();
+        }
+      }
+
+      function goPrev() {
+        stopAutoplay();
+        if (currentPhase > 0) applyPhase(currentPhase - 1);
+      }
+
+      function toggleAutoplay() {
+        if (autoplayTimer) {
+          stopAutoplay();
+          return;
+        }
+        playBtn.textContent = "pause";
+        autoplayTimer = setInterval(() => {
+          if (currentPhase < PHASES.length - 1) {
+            applyPhase(currentPhase + 1);
+          } else {
+            stopAutoplay();
+            showOutro();
+          }
+        }, 4000);
+      }
+
+      prevBtn.addEventListener("click", goPrev);
+      nextBtn.addEventListener("click", goNext);
+      playBtn.addEventListener("click", toggleAutoplay);
+
+      document.addEventListener("keydown", (e) => {
+        if (overlayOpen()) return;
+        if (e.key === "ArrowRight") {
+          goNext();
+        } else if (e.key === "ArrowLeft") {
+          goPrev();
+        }
+      });
+
+      // Raw three.js procedural geometry: a double helix built from two
+      // TubeGeometry strands plus cylinder "base pair" rungs, representing
+      // the loose chromatin DNA during interphase.
+      function initDNAHelix() {
+        const THREE = AFRAME.THREE;
+        const mount = document.querySelector("#dnaMount");
+
+        class HelixCurve extends THREE.Curve {
+          constructor(radius, height, turns, offset) {
+            super();
+            this.radius = radius;
+            this.height = height;
+            this.turns = turns;
+            this.offset = offset;
+          }
+          getPoint(t, target = new THREE.Vector3()) {
+            const angle = t * Math.PI * 2 * this.turns + this.offset;
+            return target.set(
+              Math.cos(angle) * this.radius,
+              t * this.height - this.height / 2,
+              Math.sin(angle) * this.radius
+            );
+          }
+        }
+
+        const group = new THREE.Group();
+        const strandMaterialA = new THREE.MeshStandardMaterial({
+          color: 0xc084fc,
+          transparent: true,
+          opacity: 0,
+          roughness: 0.4,
+        });
+        const strandMaterialB = new THREE.MeshStandardMaterial({
+          color: 0x818cf8,
+          transparent: true,
+          opacity: 0,
+          roughness: 0.4,
+        });
+
+        const curveA = new HelixCurve(0.22, 1.0, 2.5, 0);
+        const curveB = new HelixCurve(0.22, 1.0, 2.5, Math.PI);
+        const strandA = new THREE.Mesh(new THREE.TubeGeometry(curveA, 80, 0.018, 8, false), strandMaterialA);
+        const strandB = new THREE.Mesh(new THREE.TubeGeometry(curveB, 80, 0.018, 8, false), strandMaterialB);
+        group.add(strandA, strandB);
+
+        const rungColors = [0xff5566, 0x55d67a, 0x5599ff, 0xffe083];
+        const rungMaterials = [];
+        const rungCount = 14;
+        for (let i = 0; i <= rungCount; i++) {
+          const t = i / rungCount;
+          const pointA = curveA.getPoint(t);
+          const pointB = curveB.getPoint(t);
+          const mid = pointA.clone().add(pointB).multiplyScalar(0.5);
+          const dist = pointA.distanceTo(pointB);
+
+          const rungMat = new THREE.MeshStandardMaterial({
+            color: rungColors[i % rungColors.length],
+            transparent: true,
+            opacity: 0,
+            roughness: 0.5,
+          });
+          rungMaterials.push(rungMat);
+
+          const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, dist, 6), rungMat);
+          rung.position.copy(mid);
+          rung.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pointB.clone().sub(pointA).normalize());
+          group.add(rung);
+        }
+
+        group.scale.setScalar(1.4);
+        mount.object3D.add(group);
+
+        const allMaterials = [strandMaterialA, strandMaterialB, ...rungMaterials];
+        let currentTarget = null;
+
+        function setOpacity(target, dur) {
+          currentTarget = target;
+          const startValues = allMaterials.map((m) => m.opacity);
+          if (dur === 0) {
+            allMaterials.forEach((m) => (m.opacity = target));
+            return;
+          }
+          const startTime = performance.now();
+          function step(now) {
+            const t = Math.min(1, (now - startTime) / dur);
+            allMaterials.forEach((m, i) => {
+              m.opacity = startValues[i] + (target - startValues[i]) * t;
+            });
+            if (t < 1 && currentTarget === target) requestAnimationFrame(step);
+          }
+          requestAnimationFrame(step);
+        }
+
+        (function spin() {
+          group.rotation.y += 0.003;
+          requestAnimationFrame(spin);
+        })();
+
+        return { setOpacity };
+      }
+
+      // Raw three.js procedural geometry: a capsule "outer membrane" plus a
+      // row of squashed torus "cristae" folds, standing in for a real
+      // mitochondria model (no glTF asset).
+      function initMitochondriaMesh() {
+        const THREE = AFRAME.THREE;
+        const mount = document.querySelector("#mitochondria");
+        const group = new THREE.Group();
+
+        const outerMat = new THREE.MeshStandardMaterial({
+          color: 0xff7a4a,
+          roughness: 0.35,
+          metalness: 0.05,
+          emissive: 0x992200,
+          emissiveIntensity: 0.15,
+        });
+        const outer = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.55, 6, 16), outerMat);
+        outer.rotation.z = Math.PI / 2;
+        group.add(outer);
+
+        const cristaeMat = new THREE.MeshStandardMaterial({
+          color: 0xc23d1e,
+          roughness: 0.5,
+          metalness: 0.05,
+          side: THREE.DoubleSide,
+        });
+        [-0.28, -0.14, 0, 0.14, 0.28].forEach((x) => {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.022, 8, 20), cristaeMat);
+          ring.rotation.y = Math.PI / 2;
+          ring.scale.set(1, 0.55, 1);
+          ring.position.x = x;
+          group.add(ring);
+        });
+
+        mount.object3D.add(group);
+
+        (function spin() {
+          group.rotation.y += 0.004;
+          requestAnimationFrame(spin);
+        })();
+
+        return group;
+      }
+
+      // Raw three.js particle system (not an A-Frame primitive): bursts
+      // "ATP" points outward from the mitochondria on click.
+      function initATPBurst() {
+        const THREE = AFRAME.THREE;
+        const COUNT = 140;
+        const DURATION = 900; // ms
+
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(COUNT * 3);
+        geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+          color: 0xffd166,
+          size: 0.06,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        });
+
+        const points = new THREE.Points(geometry, material);
+        points.visible = false;
+        sceneEl.object3D.add(points);
+
+        const velocities = new Float32Array(COUNT * 3);
+        let age = 0;
+        let rafId = null;
+        let lastTime = null;
+
+        function step(time) {
+          const dt = lastTime ? (time - lastTime) / 1000 : 0;
+          lastTime = time;
+          age += dt * 1000;
+
+          const posAttr = geometry.attributes.position.array;
+          for (let i = 0; i < COUNT; i++) {
+            posAttr[i * 3] += velocities[i * 3] * dt;
+            posAttr[i * 3 + 1] += velocities[i * 3 + 1] * dt;
+            posAttr[i * 3 + 2] += velocities[i * 3 + 2] * dt;
+          }
+          geometry.attributes.position.needsUpdate = true;
+
+          const t = age / DURATION;
+          material.opacity = Math.max(0, 1 - t);
+
+          if (t >= 1) {
+            points.visible = false;
+            rafId = null;
+            return;
+          }
+          rafId = requestAnimationFrame(step);
+        }
+
+        function burst(worldPos) {
+          const posAttr = geometry.attributes.position.array;
+          for (let i = 0; i < COUNT; i++) {
+            const dir = new THREE.Vector3(
+              Math.random() * 2 - 1,
+              Math.random() * 1.5,
+              Math.random() * 2 - 1
+            ).normalize();
+            const speed = 0.7 + Math.random() * 1.3;
+
+            posAttr[i * 3] = worldPos.x;
+            posAttr[i * 3 + 1] = worldPos.y;
+            posAttr[i * 3 + 2] = worldPos.z;
+
+            velocities[i * 3] = dir.x * speed;
+            velocities[i * 3 + 1] = dir.y * speed;
+            velocities[i * 3 + 2] = dir.z * speed;
+          }
+          geometry.attributes.position.needsUpdate = true;
+          material.opacity = 1;
+          points.visible = true;
+          age = 0;
+          lastTime = null;
+          if (!rafId) rafId = requestAnimationFrame(step);
+        }
+
+        return { burst };
+      }
+
+      function initInteractions() {
+        dnaHelix = initDNAHelix();
+        initMitochondriaMesh();
+        const atpBurst = initATPBurst();
+
+        document.querySelectorAll("[data-info]").forEach((el) => {
+          el.addEventListener("click", (evt) => {
+            evt.stopPropagation();
+            entityInfoEl.textContent = el.dataset.info;
+            entityInfoEl.classList.add("flash");
+            markDiscovered(el.dataset.info);
+            if (el.id === "mitochondria") {
+              playPulseTone();
+              const worldPos = new AFRAME.THREE.Vector3();
+              el.object3D.getWorldPosition(worldPos);
+              atpBurst.burst(worldPos);
+            }
+          });
+        });
+        applyPhase(0, true);
+        initMovePad();
+
+        // in VR without hand controllers there's no mouse, so switch the
+        // gaze cursor to dwell-to-click while headset mode is active.
+        const gazeCursor = document.querySelector("#gazeCursor");
+        sceneEl.addEventListener("enter-vr", () => {
+          gazeCursor.setAttribute("cursor", "fuse", true);
+          gazeCursor.setAttribute("cursor", "fuseTimeout", 1500);
+        });
+        sceneEl.addEventListener("exit-vr", () => {
+          gazeCursor.setAttribute("cursor", "fuse", false);
+        });
+      }
+
+      function initMovePad() {
+        const rig = document.querySelector("#rig");
+        const cameraEl = document.querySelector("a-camera");
+        const activeDirections = new Set();
+        const moveSpeed = 2.2; // meters per second
+        let rafId = null;
+        let lastTime = null;
+
+        function step(time) {
+          const dt = (time - lastTime) / 1000;
+          lastTime = time;
+
+          const forward = new AFRAME.THREE.Vector3();
+          cameraEl.object3D.getWorldDirection(forward);
+          forward.negate(); // getWorldDirection returns the camera's local +Z; the view faces -Z
+          forward.y = 0;
+          forward.normalize();
+          const right = new AFRAME.THREE.Vector3(-forward.z, 0, forward.x);
+
+          const pos = rig.object3D.position;
+          if (activeDirections.has("forward")) pos.addScaledVector(forward, moveSpeed * dt);
+          if (activeDirections.has("backward")) pos.addScaledVector(forward, -moveSpeed * dt);
+          if (activeDirections.has("right")) pos.addScaledVector(right, moveSpeed * dt);
+          if (activeDirections.has("left")) pos.addScaledVector(right, -moveSpeed * dt);
+
+          if (activeDirections.size > 0) {
+            rafId = requestAnimationFrame(step);
+          } else {
+            rafId = null;
+          }
+        }
+
+        function bind(id, direction) {
+          const btn = document.getElementById(id);
+          const start = (evt) => {
+            evt.preventDefault();
+            activeDirections.add(direction);
+            if (!rafId) {
+              lastTime = performance.now();
+              rafId = requestAnimationFrame(step);
+            }
+          };
+          const end = () => activeDirections.delete(direction);
+          btn.addEventListener("pointerdown", start);
+          btn.addEventListener("pointerup", end);
+          btn.addEventListener("pointerleave", end);
+          btn.addEventListener("pointercancel", end);
+        }
+
+        bind("moveForward", "forward");
+        bind("moveBack", "backward");
+        bind("moveLeft", "left");
+        bind("moveRight", "right");
+      }
+
+      const sceneEl = document.querySelector("a-scene");
+      if (sceneEl.hasLoaded) {
+        initInteractions();
+      } else {
+        sceneEl.addEventListener("loaded", initInteractions);
+      }
+    </script>
+
+  </body>
+</html>
